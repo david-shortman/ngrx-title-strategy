@@ -2,13 +2,13 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AppComponent } from './app.component';
 import { counterFeature } from './counter';
-import { ngRxTitle } from './title-strategy';
+import { ngrxTitle } from './title-strategy';
 
 const routes: Routes = [
   {
     path: '',
     component: AppComponent,
-    title: ngRxTitle`${counterFeature.selectCount} Seconds Since ${counterFeature.selectEvent}`,
+    title: ngrxTitle`${counterFeature.selectCount} Seconds Since ${counterFeature.selectEvent}`,
   },
 ];
 
