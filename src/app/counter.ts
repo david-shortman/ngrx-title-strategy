@@ -1,11 +1,21 @@
 import { Injectable } from '@angular/core';
-import { createEffect } from '@ngrx/effects';
-import { createAction, createFeature, createReducer, on } from '@ngrx/store';
-import { interval, map } from 'rxjs';
+import { Actions, createEffect, ofType } from '@ngrx/effects';
+import {
+  createAction,
+  createFeature,
+  createReducer,
+  on,
+  props,
+} from '@ngrx/store';
+import { interval, map, switchMap } from 'rxjs';
 
-const initialState = { count: '0', event: 'Something' };
+const initialState = { count: '0', event: 'anything' };
 
 const secondElapsed = createAction('second elapsed');
+export const actionIntent = createAction(
+  'action intent',
+  props<{ event: string }>()
+);
 
 export const counterFeature = createFeature({
   name: 'counterFeature',
@@ -14,13 +24,21 @@ export const counterFeature = createFeature({
     on(secondElapsed, (state) => ({
       ...state,
       count: `${Number(state.count) + 1}`,
+    })),
+    on(actionIntent, (state, { event }) => ({
+      ...state,
+      event,
     }))
   ),
 });
 
 @Injectable({ providedIn: 'root' })
 export class CounterEffects {
+  constructor(private readonly actions$: Actions) {}
   count$ = createEffect(() => {
-    return interval(1000).pipe(map(() => secondElapsed()));
+    return this.actions$.pipe(
+      ofType(actionIntent),
+      switchMap(() => interval(1000).pipe(map(() => secondElapsed())))
+    );
   });
 }
