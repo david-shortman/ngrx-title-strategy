@@ -26,7 +26,7 @@ export const counterFeature = createFeature({
       count: `${Number(state.count) + 1}`,
     })),
     on(actionIntent, (state, { event }) => ({
-      ...state,
+      count: '0',
       event,
     }))
   ),

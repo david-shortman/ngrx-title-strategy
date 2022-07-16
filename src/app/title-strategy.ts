@@ -8,57 +8,29 @@ type TitleSegmentSelector =
   | MemoizedSelector<object, string>
   | MemoizedSelector<object, number>;
 
-class TitleSelectorUtility {
-  private static _ngRxTitleMaps = {
-    uuidsBySelectorRef: new WeakMap<TitleSegmentSelector, string>(),
-    selectorRefsByUuid: new Map<string, TitleSegmentSelector>(),
-  };
-
-  public static getUuid(selector: TitleSegmentSelector): string {
-    const cachedUuid =
-      TitleSelectorUtility._ngRxTitleMaps.uuidsBySelectorRef.get(selector);
-    const uuid = cachedUuid ?? self.crypto.randomUUID();
-    TitleSelectorUtility._ngRxTitleMaps.selectorRefsByUuid.set(uuid, selector);
-    return uuid;
+const _createSegmentTemplate = (
+  selectorOrStringish: string | number | TitleSegmentSelector
+): string => {
+  let segmentTemplate: string;
+  if (
+    typeof selectorOrStringish !== 'string' &&
+    typeof selectorOrStringish !== 'number'
+  ) {
+    const uuid = NgRxTitleStrategy.getUuid(selectorOrStringish);
+    segmentTemplate = `${NgRxTitleStrategy.selectorTemplatePrefix}${uuid}${NgRxTitleStrategy.selectorTemplateSuffix}`;
+  } else {
+    segmentTemplate = String(selectorOrStringish);
   }
-
-  public static getSelector(uuid: string): TitleSegmentSelector {
-    return (
-      TitleSelectorUtility._ngRxTitleMaps.selectorRefsByUuid.get(uuid) ??
-      createSelector(
-        (state) => state,
-        () => ''
-      )
-    );
-  }
-}
-
-const selectorTemplatePrefix = 'NgRxTitleSelector${';
-const selectorTemplatePrefixRegExp = selectorTemplatePrefix.replace('$', '\\$');
-const selectorTemplateSuffix = '}';
-const selectorTemplateRegExp = new RegExp(
-  `(${selectorTemplatePrefixRegExp}.*?${selectorTemplateSuffix})`
-);
+  return segmentTemplate;
+};
 
 export const ngrxTitle = (
-  strings: TemplateStringsArray,
-  ...segment: Array<TitleSegmentSelector | string | number>
+  plainSegments: TemplateStringsArray,
+  ...templatedSegments: Array<TitleSegmentSelector | string | number>
 ): string => {
-  const templatedSegments = segment.map((selectorOrPlain) => {
-    let templatedSegment: string;
-    if (
-      typeof selectorOrPlain !== 'string' &&
-      typeof selectorOrPlain !== 'number'
-    ) {
-      const uuid = TitleSelectorUtility.getUuid(selectorOrPlain);
-      templatedSegment = `${selectorTemplatePrefix}${uuid}${selectorTemplateSuffix}`;
-    } else {
-      templatedSegment = String(selectorOrPlain);
-    }
-    return templatedSegment;
-  });
-  return strings.reduce(
-    (agg, s, i) => `${agg}${s}${templatedSegments[i] ?? ''}`,
+  const segmentTemplates = templatedSegments.map(_createSegmentTemplate);
+  return plainSegments.reduce(
+    (template, segment, i) => template + segment + (segmentTemplates[i] ?? ''),
     ''
   );
 };
@@ -69,6 +41,20 @@ export class NgRxTitleStrategy extends TitleStrategy {
     super();
   }
 
+  static selectorTemplatePrefix = 'NgRxTitleSelector${';
+  static selectorTemplateSuffix = '}';
+
+  private static selectorTemplatePrefixRegExp =
+    NgRxTitleStrategy.selectorTemplatePrefix.replace('$', '\\$');
+
+  private static _ngRxTitleMaps = {
+    uuidsBySelectorRef: new WeakMap<TitleSegmentSelector, string>(),
+    selectorRefsByUuid: new Map<string, TitleSegmentSelector>(),
+  };
+  private static selectorTemplateRegExp = new RegExp(
+    `(${NgRxTitleStrategy.selectorTemplatePrefixRegExp}.*?${NgRxTitleStrategy.selectorTemplateSuffix})`
+  );
+
   private titleSubscription: Subscription | undefined;
 
   updateTitle(snapshot: RouterStateSnapshot): void {
@@ -77,6 +63,24 @@ export class NgRxTitleStrategy extends TitleStrategy {
     const titleTemplate = this.buildTitle(snapshot);
     const title$ = this.selectTitleFromTemplate(titleTemplate);
     this.titleSubscription = title$.subscribe((t) => this.title.setTitle(t));
+  }
+
+  public static getUuid(selector: TitleSegmentSelector): string {
+    const cachedUuid =
+      NgRxTitleStrategy._ngRxTitleMaps.uuidsBySelectorRef.get(selector);
+    const uuid = cachedUuid ?? self.crypto.randomUUID();
+    NgRxTitleStrategy._ngRxTitleMaps.selectorRefsByUuid.set(uuid, selector);
+    return uuid;
+  }
+
+  public static getSelector(uuid: string): TitleSegmentSelector {
+    return (
+      NgRxTitleStrategy._ngRxTitleMaps.selectorRefsByUuid.get(uuid) ??
+      createSelector(
+        (state) => state,
+        () => ''
+      )
+    );
   }
 
   private selectTitleFromTemplate(titleTemplate?: string): Observable<string> {
@@ -89,17 +93,17 @@ export class NgRxTitleStrategy extends TitleStrategy {
 
   private getTitleSegmentSelectors(title: string): Array<TitleSegmentSelector> {
     return title
-      .split(selectorTemplateRegExp)
+      .split(NgRxTitleStrategy.selectorTemplateRegExp)
       .map((s) => this.getTitleSegment(s));
   }
 
   private getTitleSegment(segmentTemplate: string): TitleSegmentSelector {
     let segmentSelector: TitleSegmentSelector;
-    if (segmentTemplate.includes(selectorTemplatePrefix)) {
+    if (segmentTemplate.includes(NgRxTitleStrategy.selectorTemplatePrefix)) {
       const selectorUuid = segmentTemplate
-        .replace(selectorTemplatePrefix, '')
-        .replace(selectorTemplateSuffix, '');
-      segmentSelector = TitleSelectorUtility.getSelector(selectorUuid);
+        .replace(NgRxTitleStrategy.selectorTemplatePrefix, '')
+        .replace(NgRxTitleStrategy.selectorTemplateSuffix, '');
+      segmentSelector = NgRxTitleStrategy.getSelector(selectorUuid);
     } else {
       segmentSelector = createSelector(
         (state) => state,
