@@ -4,25 +4,10 @@ import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 import { MemoizedSelector, Store } from '@ngrx/store';
 import { combineLatest, map, of, Subscription, tap } from 'rxjs';
 
-const ngRxTitleSelectorUuidMapSymbol = Symbol(
-  '__NGRX_TITLE_SELECTOR_UUID_MAP__'
-);
-const ngRxUuidTitleSelectorMapSymbol = Symbol(
-  '__NGRX_UUID_TITLE_SELECTOR_MAP__'
-);
-
-declare global {
-  interface Window {
-    [ngRxTitleSelectorUuidMapSymbol]: Map<
-      MemoizedSelector<object, string>,
-      string
-    >;
-    [ngRxUuidTitleSelectorMapSymbol]: Map<
-      string,
-      MemoizedSelector<object, string>
-    >;
-  }
-}
+const __ngRxTitleMaps = {
+  titleToSelectorUuid: new Map<MemoizedSelector<object, string>, string>(),
+  uuidToTitleSelector: new Map<string, MemoizedSelector<object, string>>(),
+};
 
 export const provideNgRxTitleStrategy = () => ({
   provide: TitleStrategy,
@@ -33,16 +18,10 @@ export const ngRxTitle = (
   strings: TemplateStringsArray,
   ...selectors: Array<MemoizedSelector<object, string>>
 ): string => {
-  if (!window[ngRxTitleSelectorUuidMapSymbol]) {
-    window[ngRxTitleSelectorUuidMapSymbol] = new Map();
-  }
-  if (!window[ngRxUuidTitleSelectorMapSymbol]) {
-    window[ngRxUuidTitleSelectorMapSymbol] = new Map();
-  }
   const selectorKeys = selectors.map((selector) => {
-    const savedUuid = window[ngRxTitleSelectorUuidMapSymbol].get(selector);
+    const savedUuid = __ngRxTitleMaps.titleToSelectorUuid.get(selector);
     const uuid = savedUuid ?? self.crypto.randomUUID();
-    window[ngRxUuidTitleSelectorMapSymbol].set(uuid, selector);
+    __ngRxTitleMaps.uuidToTitleSelector.set(uuid, selector);
     return `NgRxTitleSelector\$\{${uuid}\}`;
   });
   return strings.reduce(
@@ -67,7 +46,7 @@ export class NgRxTitleStrategy extends TitleStrategy {
         ?.split(/(NgRxTitleSelector\${.*?})/)
         .map((s) =>
           s.includes('NgRxTitleSelector${')
-            ? window[ngRxUuidTitleSelectorMapSymbol].get(
+            ? __ngRxTitleMaps.uuidToTitleSelector.get(
                 s.replace('NgRxTitleSelector${', '').replace('}', '')
               )
             : s
