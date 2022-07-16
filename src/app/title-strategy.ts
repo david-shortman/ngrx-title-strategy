@@ -46,14 +46,14 @@ export class NgRxTitleStrategy extends TitleStrategy {
 
   private static selectorTemplatePrefixRegExp =
     NgRxTitleStrategy.selectorTemplatePrefix.replace('$', '\\$');
+  private static selectorTemplateRegExp = new RegExp(
+    `(${NgRxTitleStrategy.selectorTemplatePrefixRegExp}.*?${NgRxTitleStrategy.selectorTemplateSuffix})`
+  );
 
   private static _ngRxTitleMaps = {
     uuidsBySelectorRef: new WeakMap<TitleSegmentSelector, string>(),
     selectorRefsByUuid: new Map<string, TitleSegmentSelector>(),
   };
-  private static selectorTemplateRegExp = new RegExp(
-    `(${NgRxTitleStrategy.selectorTemplatePrefixRegExp}.*?${NgRxTitleStrategy.selectorTemplateSuffix})`
-  );
 
   private titleSubscription: Subscription | undefined;
 
