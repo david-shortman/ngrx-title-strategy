@@ -50,10 +50,11 @@ export class NgRxTitleStrategy extends TitleStrategy {
     `(${NgRxTitleStrategy.selectorTemplatePrefixRegExp}.*?${NgRxTitleStrategy.selectorTemplateSuffix})`
   );
 
-  private static _ngRxTitleMaps = {
-    uuidsBySelectorRef: new WeakMap<TitleSegmentSelector, string>(),
-    selectorRefsByUuid: new Map<string, TitleSegmentSelector>(),
-  };
+  private static _selectorRefsByUuid = new Map<string, TitleSegmentSelector>();
+  private static _uuidsBySelectorRef = new WeakMap<
+    TitleSegmentSelector,
+    string
+  >();
 
   private titleSubscription: Subscription | undefined;
 
@@ -66,16 +67,16 @@ export class NgRxTitleStrategy extends TitleStrategy {
   }
 
   public static getUuid(selector: TitleSegmentSelector): string {
-    const cachedUuid =
-      NgRxTitleStrategy._ngRxTitleMaps.uuidsBySelectorRef.get(selector);
+    const cachedUuid = NgRxTitleStrategy._uuidsBySelectorRef.get(selector);
     const uuid = cachedUuid ?? self.crypto.randomUUID();
-    NgRxTitleStrategy._ngRxTitleMaps.selectorRefsByUuid.set(uuid, selector);
+    NgRxTitleStrategy._selectorRefsByUuid.set(uuid, selector);
+    NgRxTitleStrategy._uuidsBySelectorRef.set(selector, uuid);
     return uuid;
   }
 
   public static getSelector(uuid: string): TitleSegmentSelector {
     return (
-      NgRxTitleStrategy._ngRxTitleMaps.selectorRefsByUuid.get(uuid) ??
+      NgRxTitleStrategy._selectorRefsByUuid.get(uuid) ??
       createSelector(
         (state) => state,
         () => ''
